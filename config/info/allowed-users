@@ -1,0 +1,3 @@
+refs/heads/publish  	.**
+#refs/heads/davp/.**    davp
+#refs/tags/v[0-9]*     *.**

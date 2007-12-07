@@ -1,0 +1,338 @@
+#!/bin/bash
+
+USAGE='[--export | --import] [--clone] [-v] <project>'
+LONG_USAGE='Options:
+    -e, --export    Export the project, only works inside a git repository
+    -i, --import    Import the project
+    -c, --clone     Make a clone/checkout of project into the current directory
+    -v              Verbose mode
+
+gitex is an attempt to create interoperability between git and cvs
+
+Its purpose is importing a project from CVS into a git repository, 
+you can clone and work on. After commiting your changes you can export 
+those back to the same repository by pushing your changes to a 
+designated "publish" branch on the git-repo that was imported to.
+
+To get started:
+$ gitex --import <project name>
+
+This will make a fresh checkout/update of the projectname, 
+where you afterwards can clone from like this:
+
+$ git-clone -l /home/davp/gitex/git/<project name> [destination]
+
+You could also pass the -c | --clone flag to gitex, and it will make 
+a fresh checkout of <project> into your current working directory
+
+To export changes you have committed you would issue 
+(from within the top-level your working git-repo):
+
+$ gitex --export <project name> -- pushes changes into CVS
+
+This will in turn, move your changes into the HEAD of 
+the CVS-repository that was exported from. Only HEAD is supported as of now, 
+so it is not possible to push to certain branches in CVS..
+
+If in doubt what changes will be pushed to CVS, you could issue:
+
+$ git-fetch -- updates repository with newest remote refs
+$ git-cherry origin/origin <local> -- shows what not already is in current CVS
+
+If no options is given, gitex will assume you want to import newest 
+sources from CVS <project>.
+'
+
+project_encoding="ISO-8859-1"
+run_from=$(pwd)
+
+action=import
+verbose=
+clone=
+cvsbranch=HEAD
+branch=origin
+project=$(git config gitex.project) # will give nothing back if not in a git repo
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+usage() {
+    die "Usage: $0 $USAGE"
+}
+
+pre_check() {
+    if ! test -d "$gitex_dir"/git; then
+        . /home/davp/gitex/setup.sh "$gitex_dir"
+    fi
+} 
+
+no_changes () {
+	git diff-index --quiet --cached HEAD &&
+	git diff-files --quiet
+}
+
+do_rebase() {
+    git rebase origin/origin
+}
+
+do_export() {
+
+    # check if we're in a git repository, assume the user has git in PATH
+    SUBDIRECTORY_OK=Yes
+    . git-sh-setup
+    require_work_tree
+    cd_to_toplevel
+	
+	echo "Exporting '$project'"
+    if test -n "$verbose"; then
+        echo "Running import to make sure repository is up to date.."
+    fi
+
+	do_import
+
+    lock_file="$gitex_dir/cvs/.$project-lock"
+    if [ -f "$lock_file" ]; then
+        echo -n ""
+        echo "Someone is already pushing '$project'. Aborting."
+        echo "----------------------------------------"
+        cat "$lock_file"
+        echo "----------------------------------------"
+        exit
+    fi
+    
+    (
+    date
+    whoami
+    ) > "$lock_file"
+    chmod 777 "$lock_file"
+    cvs_project="$gitex_dir/cvs/$project"
+	
+    git_directory="$PWD/.git"
+	export GIT_DIR="$git_directory"
+
+    if ! test -d "$cvs_project/$cvsbranch"; then
+        mkdir -p "$cvs_project/$cvsbranch"
+        echo "CVS Checkout of $project ($cvsbranch) doesn't exist.. Creating."
+        if test "$cvsbranch" = "HEAD"; then
+            cvs -q -d "$gitex_cvs_root" co -d "$cvs_project/$cvsbranch" "$project"
+        else
+            if ! cvs -q -d "$gitex_cvs_root" co -r"$cvsbranch" -d "$cvs_project/$cvsbranch" "$project"; then
+				rm -f "$lock_file"
+				rm -r "$cvs_project/$cvsbranch"
+				die "Aborting."
+			fi 
+        fi
+    fi
+
+    cd "$cvs_project/$cvsbranch"
+
+    if test -n "$verbose"; then
+        echo "Updating to newest.."
+    fi
+
+    cvs -q upd -dPC # Revert locally modified also
+    
+    git-fetch --quiet
+    
+    echo
+    echo "The following patches will be exported into CVS"
+    echo "-----------------------------------------------"
+    
+    if test "$cvsbranch" = "HEAD"; then
+        gitcherry="origin/origin"
+    else
+        gitcherry=origin/"$cvsbranch"
+    fi
+
+    git cherry -v "$gitcherry"
+    
+    sure='N'
+    echo
+    echo -n "Are you sure that you want to export '$project'? (N/y) "
+    read sure
+    
+    if ! test "$sure" = "y" -o "$sure" = "Y"; then
+        rm -f "$lock_file"
+        die "Export aborted"
+    fi
+    
+    has_updates="no"
+    while read line; do
+        exportcommit="$(echo $line | sed -n 's/^+ //p')"
+        if test -n "$exportcommit"; then
+            has_updates="yes"
+            #echo "Commit: $exportcommit"
+            git-cvsexportcommit -c -p "$exportcommit" # Auto commit
+        fi
+    done < <(git-cherry "$gitcherry")
+
+    unset GIT_DIR
+
+    if [ "$has_updates" = "yes" ]; then
+        find . '!' -perm -20 -exec chmod g+wr {} \;
+        find . '!' -group "$gitex_shared_group" -exec chgrp "$gitex_shared_group" {} \;
+        
+        cvs -q update -dP # Do a update once more, for removing any empty folders due to renames
+        do_import # Update our cvs remote with newest commits
+
+        export GIT_DIR="$git_directory"
+		git fetch --quiet # Update with newest refs
+
+        if no_changes; then
+            git rebase "$gitcherry" # Rebase to get commits from cvs import
+        else
+            echo "You have local changes - Cannot rebase '$gitcherry'."
+        fi
+    else
+        echo "No updates to import."
+    fi
+    unset GIT_DIR
+
+    rm -f "$lock_file"
+}
+
+do_import() {
+
+    CVSUMASK=007
+    
+    hooks_dir="$gitex_dir/config/hooks"
+    info_dir="$gitex_dir/config/info"
+    project_dir="$gitex_dir/git/$project"
+    
+    echo "Importing newest changes from '$project'.."
+
+    first=n
+    if ! test -d "$gitex_dir/git/$project"; then
+        echo "This is a first time import, depending on the size of project, this could take a while."
+        first=y
+    fi
+
+    if ! git-cvsimport -a -i -C "$project_dir" -d "$gitex_cvs_root" "$project"; then
+        die "Could not import $project. Aborting"
+		rm -rf "$project_dir"
+    fi
+
+    if test "$first" = "y"; then
+        
+        cd "$project_dir"
+
+        #echo "Setting up hook-scripts, and permissions .."
+        #cp "$hooks_dir/update" ".git/hooks/"
+        #sed "s|__PROJECT__|$project|g" "$hooks_dir/post-update" > ".git/hooks/post-update"
+        #chmod +x ".git/hooks/post-update" ".git/hooks/update"
+
+        #cp "$info_dir/allowed-users" ".git/info/"
+        #cp "$info_dir/allowed-groups" ".git/info/"
+
+        #echo "Setting commit encoding to ISO-8859-1" # TODO: hardcoded.. maybe make configurable
+        git config i18n.commitencoding "ISO-8859-1"
+		git config gitex.project "$project" # Setup the project name, for later retrieval
+
+        chgrp -R "$gitex_shared_group" . # make sure others can poke around
+    fi
+
+    unset CVSUMASK
+}
+
+do_clone() {
+    if test -n "$verbose"; then
+        echo "Cloning repository $project into $run_from/$project .."
+    fi
+    git clone "$gitex_dir"/git/"$project" "$run_from/$project"
+	cd "$run_from"/"$project"
+	git remote add cvs "$gitex_dir/git/$project/.git"
+	git config i18n.commitencoding "ISO-8859-1"
+	git config gitex.project "$project" # Setup the project name, for later retrieval
+}
+
+if test -z "$LONG_USAGE"; then
+    LONG_USAGE="Usage: $0 $USAGE"
+    else
+    LONG_USAGE="Usage: $0 $USAGE
+
+$LONG_USAGE"
+fi
+
+case "$1" in
+-h|--h|--he|--hel|--help)
+    echo "$LONG_USAGE"
+    exit
+esac
+
+source /home/davp/gitex/config/conf || die "Gitty configuration file not found. Aborting"
+if test -f "$HOME"/.gitexrc; then 
+    # Source users own configuration file if found
+    source "$HOME"/.gitexrc
+fi
+
+while case "$#" in 0) break ;; esac
+do
+    case "$1" in
+    -v|--verbose)
+        verbose=t
+    ;;
+    --export|-e)
+        action=export
+    ;;
+    --import|-i)
+    ;;
+    --clone|-c)
+        clone=t
+    ;;
+    --purge|-p)
+        echo "Purging all checkouts, and imports.."
+        rm -rf "$gitex_dir/git"
+        rm -rf "$gitex_dir/cvs"
+    
+        cd "$gitex_dir"
+        ./setup.sh
+        echo "Done."
+        exit 0
+    ;;
+    --branch|-b)
+        shift;
+        cvsbranch=$1
+    ;;
+    -*)
+        usage
+    ;;
+    *)
+        break
+    ;;
+    esac
+    shift
+done
+
+case "$#" in
+1)
+    project_name="$1"
+	# Is this the proper way of finding out what cvs-repos are available?
+    if ! test -d "$gitex_cvs_root/$project_name"; then
+        die "Project $project_name was not found in CVS root ($gitex_cvs_root)"
+    fi
+    project="$project_name"
+    ;;
+*)
+    if test -z "$project"; then
+		die "No project was set. Maybe you're not in a git repository?"
+    fi
+esac
+
+pre_check
+
+case "$action" in
+export)
+    do_export
+    ;;
+import)
+    do_import
+    ;;
+esac
+
+if test -n "$clone"; then
+    do_clone
+fi
+
+exit 0
