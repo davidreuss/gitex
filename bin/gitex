@@ -73,10 +73,6 @@ no_changes () {
 	git diff-files --quiet
 }
 
-do_rebase() {
-    git rebase origin/origin
-}
-
 do_export() {
 
     # check if we're in a git repository, assume the user has git in PATH
