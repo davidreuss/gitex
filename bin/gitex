@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE='[--export | --import] [--clone] [-v] <project>'
+USAGE='[--export | --import | --update] [--clone] [--verbose] <project>'
 LONG_USAGE='Options:
     -e, --export    Export the project, only works inside a git repository
     -i, --import    Import the project
@@ -71,6 +71,46 @@ pre_check() {
 no_changes () {
 	git diff-index --quiet --cached HEAD &&
 	git diff-files --quiet
+}
+
+do_update() {
+	# check if we're in a git repository, assume the user has git in PATH
+    SUBDIRECTORY_OK=Yes
+    . git-sh-setup
+    require_work_tree
+    cd_to_toplevel
+		
+	do_import
+	git-fetch --quiet
+	
+	if test "$cvsbranch" = "HEAD"; then
+        gitcherry="origin/origin"
+    else
+        gitcherry=origin/"$cvsbranch"
+    fi
+	
+	cherry=$(git cherry -v HEAD "$gitcherry")
+	if test -n "$cherry"; then
+		echo "The following patches are not in your HEAD"
+		echo "------------------------------------------"
+		echo "$cherry"
+	else 
+		echo "No changes in CVS to import.."
+		exit 0
+	fi
+	
+	sure='N'
+    echo
+    echo -n "Do you want to update '$project'? (N/y) "
+    read sure
+    
+    if test "$sure" = "y" -o "$sure" = "Y"; then
+		# this will fail if there's any local 
+		# changes, so don't bother checking
+		if ! git rebase "$gitcherry"; then
+			die "Error: Working directory has local changes - cannot update"
+		fi
+    fi
 }
 
 do_export() {
@@ -273,6 +313,9 @@ do
         action=export
     ;;
     --import|-i)
+	;;
+	--update|-u)
+		action=update
     ;;
     --clone|-c)
         clone=t
@@ -289,7 +332,7 @@ do
     ;;
     --branch|-b)
         shift;
-        cvsbranch=$1
+        cvsbranch="$1"
     ;;
     -*)
         usage
@@ -324,6 +367,9 @@ export)
     ;;
 import)
     do_import
+	;;
+update)
+	do_update
     ;;
 esac
 
