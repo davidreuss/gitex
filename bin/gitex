@@ -213,7 +213,7 @@ do_export() {
         do_import # Update our cvs remote with newest commits
 
         cd "$run_from"
-        
+
         git fetch --quiet # Update with newest refs
 
         # stash local changes, rebase and reapply the stash
@@ -259,10 +259,12 @@ do_import() {
 
         chgrp -R "$gitex_shared_group" . # make sure others can poke around
     fi
-    
+
     git reset --soft origin # set HEAD to origin
 
     unset CVSUMASK
+
+    cd "$run_from"
 }
 
 do_clone() {
