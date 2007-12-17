@@ -105,11 +105,10 @@ do_update() {
     read sure
     
     if test "$sure" = "y" -o "$sure" = "Y"; then
-		# this will fail if there's any local 
-		# changes, so don't bother checking
-		if ! git rebase "$gitcherry"; then
-			die "Error: Working directory has local changes - cannot update"
-		fi
+		# stash local changes, rebase and reapply the stash
+		git stash
+		git rebase "$gitcherry"
+		git stash apply
     fi
 }
 
@@ -213,14 +212,15 @@ do_export() {
         cvs -q update -dP # Do a update once more, for removing any empty folders due to renames
         do_import # Update our cvs remote with newest commits
 
-        export GIT_DIR="$git_directory"
+        cd "$run_from"
+
 		git fetch --quiet # Update with newest refs
 
-        if no_changes; then
-            git rebase "$gitcherry" # Rebase to get commits from cvs import
-        else
-            echo "You have local changes - Cannot rebase '$gitcherry'."
-        fi
+		# stash local changes, rebase and reapply the stash
+		git stash
+		git rebase "$gitcherry"
+		git stash apply
+		
     else
         echo "No updates to import."
     fi
@@ -281,6 +281,7 @@ do_clone() {
 	git remote add cvs "$gitex_dir/git/$project/.git"
 	git config i18n.commitencoding "ISO-8859-1"
 	git config gitex.project "$project" # Setup the project name, for later retrieval
+	git rebase origin/origin # The real CVS HEAD is on origin/origin, not origin/HEAD
 }
 
 if test -z "$LONG_USAGE"; then
