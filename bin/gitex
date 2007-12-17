@@ -249,9 +249,9 @@ do_import() {
         rm -rf "$project_dir"
     fi
 
-    if test "$first" = "y"; then
+    cd "$project_dir"
 
-        cd "$project_dir"
+    if test "$first" = "y"; then
 
         echo "Setting commit encoding to ISO-8859-1" # TODO: Make configurable
         git config i18n.commitencoding "ISO-8859-1"
@@ -259,6 +259,8 @@ do_import() {
 
         chgrp -R "$gitex_shared_group" . # make sure others can poke around
     fi
+    
+    git reset --soft origin # set HEAD to origin
 
     unset CVSUMASK
 }
@@ -272,7 +274,6 @@ do_clone() {
     git remote add cvs "$gitex_dir/git/$project/.git"
     git config i18n.commitencoding "ISO-8859-1"
     git config gitex.project "$project" # Setup the project name, for later retrieval
-    git rebase origin/origin # The real CVS HEAD is on origin/origin, not origin/HEAD
 }
 
 if test -z "$LONG_USAGE"; then
