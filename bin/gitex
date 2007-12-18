@@ -106,9 +106,13 @@ do_update() {
 
     if test "$sure" = "y" -o "$sure" = "Y"; then
         # stash local changes, rebase and reapply the stash
-        git stash
-        git rebase "$gitcherry"
-        git stash apply
+        if ! no_changes; then
+            git-stash
+            git rebase "$gitcherry"
+            git stash apply
+        else
+            git-rebase "$gitcherry"
+        fi
     fi
 }
 
@@ -217,9 +221,13 @@ do_export() {
         git fetch --quiet # Update with newest refs
 
         # stash local changes, rebase and reapply the stash
-        git stash
-        git rebase "$gitcherry"
-        git stash apply
+        if ! no_changes; then
+            git-stash
+            git rebase "$gitcherry"
+            git stash apply
+        else
+            git-rebase "$gitcherry"
+        fi
 
     else
         echo "No updates to import."
