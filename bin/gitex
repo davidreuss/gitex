@@ -116,6 +116,16 @@ do_update() {
     fi
 }
 
+do_cleanup() {
+    rm -f "$lock_file" "$gitex_dir/cvs/$project/$cvsbranch/.cvsexportcommit.diff" "$gitex_dir/cvs/$project/$cvsbranch/.msg"
+    die "Commit: $exportcommit failed applying cleanly. Aborting"
+}
+
+do_set_permissions() {
+    find . '!' -perm -20 -exec chmod g+wr {} \;
+    find . '!' -group "$gitex_shared_group" -exec chgrp "$gitex_shared_group" {} \;
+}
+
 do_export() {
 
     echo "Exporting '$project'"
@@ -198,20 +208,42 @@ do_export() {
     fi
 
     has_updates="no"
+    export_log_file="$gitex_dir/cvs/.$project-$cvsbranch-export"
+    echo "" > "$export_log_file"
+    echo ""
     while read line; do
         exportcommit="$(echo $line | sed -n 's/^+ //p')"
         if test -n "$exportcommit"; then
             has_updates="yes"
-            #echo "Commit: $exportcommit"
-            git-cvsexportcommit -c -p "$exportcommit" # Auto commit
+
+            if test -n "$verbose"; then
+                if ! git-cvsexportcommit -c -p "$exportcommit"; then
+                    do_cleanup
+                fi
+            else
+                # Suppress the output of git-cvsexportcommit as it can be rather verbose
+                commitline=$(git show --quiet --name-only --pretty=oneline $exportcommit)
+                echo -n "Exporting: $commitline"
+                if ! git-cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
+                    echo " ... FAILED"
+                    echo ""
+                    do_cleanup
+                else
+                    echo " ... OK"
+                fi
+            fi
         fi
     done < <(git-cherry "$gitcherry")
 
     unset GIT_DIR
 
     if [ "$has_updates" = "yes" ]; then
-        find . '!' -perm -20 -exec chmod g+wr {} \;
-        find . '!' -group "$gitex_shared_group" -exec chgrp "$gitex_shared_group" {} \;
+
+        echo ""
+        echo "All OK."
+        echo ""
+
+        do_set_permissions
 
         cvs -q update -dP # Do a update once more, for removing any empty folders due to renames
         do_import # Update our cvs remote with newest commits
