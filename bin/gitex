@@ -118,18 +118,18 @@ do_update() {
 
 do_export() {
 
-    # check if we're in a git repository, assume the user has git in PATH
-    SUBDIRECTORY_OK=Yes
-    . git-sh-setup
-    require_work_tree
-    cd_to_toplevel
-
     echo "Exporting '$project'"
     if test -n "$verbose"; then
         echo "Running import to make sure repository is up to date.."
     fi
 
     do_import
+
+    # check if we're in a git repository, assume the user has git in PATH
+    SUBDIRECTORY_OK=Yes
+    . git-sh-setup
+    require_work_tree
+    cd_to_toplevel
 
     lock_file="$gitex_dir/cvs/.$project-lock"
     if [ -f "$lock_file" ]; then
