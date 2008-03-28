@@ -20,7 +20,7 @@ $ gitex --import <project name>
 This will make a fresh checkout/update of the projectname,
 where you afterwards can clone from like this:
 
-$ git-clone -l /home/davp/gitex/git/<project name> [destination]
+$ git-clone -l $HOME/.gitex/git/<project name> [destination]
 
 You could also pass the -c | --clone flag to gitex, and it will make
 a fresh checkout of <project> into your current working directory
@@ -31,8 +31,8 @@ To export changes you have committed you would issue
 $ gitex --export <project name> -- pushes changes into CVS
 
 This will in turn, move your changes into the HEAD of
-the CVS-repository that was exported from. Only HEAD is supported as of now,
-so it is not possible to push to certain branches in CVS..
+the CVS-repository that was exported from. You can assign a specific branch 
+to push into by using --branch <branchname>
 
 If in doubt what changes will be pushed to CVS, you could issue:
 
@@ -45,6 +45,7 @@ sources from CVS <project>.
 
 project_encoding="ISO-8859-1"
 run_from=$(pwd)
+last_export_tag=GITEX_LAST_EXPORT
 
 action=import
 verbose=
@@ -64,7 +65,7 @@ usage() {
 
 pre_check() {
     if ! test -d "$gitex_dir"/git; then
-        . /home/davp/gitex/setup.sh "$gitex_dir"
+        . "$HOME/.gitex/setup.sh" "$gitex_dir"
     fi
 }
 
@@ -252,6 +253,9 @@ do_export() {
 
         git fetch --quiet # Update with newest refs
 
+        # tag latest "export"
+        git tag -f "$last_export_tag"
+
         # stash local changes, rebase and reapply the stash
         if ! no_changes; then
             git-stash
@@ -332,7 +336,7 @@ case "$1" in
     exit
 esac
 
-source /home/davp/gitex/config/conf || die "Gitty configuration file not found. Aborting"
+source "$HOME/.gitex/config/conf" || die "Gitty configuration file not found. Aborting"
 if test -f "$HOME"/.gitexrc; then
     # Source users own configuration file if found
     source "$HOME"/.gitexrc
