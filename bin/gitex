@@ -284,7 +284,7 @@ do_import() {
     info_dir="$gitex_dir/config/info"
     project_dir="$gitex_dir/git/$project"
 
-    echo "Importing newest changes from '$project'.."
+    echo "Importing newest changes from '$project' ($cvsbranch)"
 
     first=n
     if ! test -d "$gitex_dir/git/$project"; then
