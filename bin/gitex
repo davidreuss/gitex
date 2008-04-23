@@ -50,9 +50,13 @@ last_export_tag=GITEX_LAST_EXPORT
 action=import
 verbose=
 clone=
-cvsbranch=HEAD
 branch=origin
 project=$(git config gitex.project) # will give nothing back if not in a git repo
+
+cvsbranch=$(git config gitex.exportbranch) # Check if user has set a default branch
+if test -z "$cvsbranch"; then
+    cvsbranch=HEAD
+fi
 
 die() {
     echo >&2 "$@"
@@ -129,7 +133,7 @@ do_set_permissions() {
 
 do_export() {
 
-    echo "Exporting '$project'"
+    echo "Exporting '$project' into '$cvsbranch'"
     if test -n "$verbose"; then
         echo "Running import to make sure repository is up to date.."
     fi
