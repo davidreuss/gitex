@@ -227,7 +227,7 @@ do_export() {
                 fi
             else
                 # Suppress the output of git-cvsexportcommit as it can be rather verbose
-                commitline=$(git show --quiet --name-only --pretty=oneline --color $exportcommit)
+                commitline=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $exportcommit)
                 echo -n "Exporting: $commitline"
                 if ! git-cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
                     echo " ... FAILED"
