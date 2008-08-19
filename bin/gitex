@@ -12,7 +12,7 @@ gitex is an attempt to create interoperability between git and cvs
 Its purpose is importing a project from CVS into a git repository,
 you can clone and work on. After commiting your changes you can export
 those back to the same repository by pushing your changes to a
-designated "publish" branch on the git-repo that was imported to.
+designated "publish" branch on the git repo that was imported to.
 
 To get started:
 $ gitex --import <project name>
@@ -20,13 +20,13 @@ $ gitex --import <project name>
 This will make a fresh checkout/update of the projectname,
 where you afterwards can clone from like this:
 
-$ git-clone -l $HOME/.gitex/git/<project name> [destination]
+$ git clone -l $HOME/.gitex/git/<project name> [destination]
 
 You could also pass the -c | --clone flag to gitex, and it will make
 a fresh checkout of <project> into your current working directory
 
 To export changes you have committed you would issue
-(from within the top-level your working git-repo):
+(from within the top-level your working git repo):
 
 $ gitex --export <project name> -- pushes changes into CVS
 
@@ -36,8 +36,8 @@ to push into by using --branch <branchname>
 
 If in doubt what changes will be pushed to CVS, you could issue:
 
-$ git-fetch -- updates repository with newest remote refs
-$ git-cherry origin/origin <local> -- shows what not already is in current CVS
+$ git fetch -- updates repository with newest remote refs
+$ git cherry origin/origin <local> -- shows what not already is in current CVS
 
 If no options is given, gitex will assume you want to import newest
 sources from CVS <project>.
@@ -81,12 +81,12 @@ no_changes () {
 do_update() {
     # check if we're in a git repository, assume the user has git in PATH
     SUBDIRECTORY_OK=Yes
-    . git-sh-setup
+    . "$(git --exec-path)/git-sh-setup"
     require_work_tree
     cd_to_toplevel
 
     do_import
-    git-fetch --quiet
+    git fetch --quiet
 
     if test "$cvsbranch" = "HEAD"; then
         gitcherry="origin/origin"
@@ -112,11 +112,11 @@ do_update() {
     if test "$sure" = "y" -o "$sure" = "Y"; then
         # stash local changes, rebase and reapply the stash
         if ! no_changes; then
-            git-stash
+            git stash
             git rebase "$gitcherry"
             git stash apply
         else
-            git-rebase "$gitcherry"
+            git rebase "$gitcherry"
         fi
     fi
 }
@@ -142,7 +142,7 @@ do_export() {
 
     # check if we're in a git repository, assume the user has git in PATH
     SUBDIRECTORY_OK=Yes
-    . git-sh-setup
+    . "$(git --exec-path)/git-sh-setup"
     require_work_tree
     cd_to_toplevel
 
@@ -188,7 +188,7 @@ do_export() {
 
     cvs -q upd -dPC # Revert locally modified also
 
-    git-fetch --quiet
+    git fetch --quiet
 
     echo
     echo "The following patches will be exported into CVS"
@@ -222,14 +222,14 @@ do_export() {
             has_updates="yes"
 
             if test -n "$verbose"; then
-                if ! git-cvsexportcommit -c -p "$exportcommit"; then
+                if ! git cvsexportcommit -c -p "$exportcommit"; then
                     do_cleanup
                 fi
             else
-                # Suppress the output of git-cvsexportcommit as it can be rather verbose
+                # Suppress the output of git cvsexportcommit as it can be rather verbose
                 commitline=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $exportcommit)
                 echo -n "Exporting: $commitline"
-                if ! git-cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
+                if ! git cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
                     echo " ... FAILED"
                     echo ""
                     do_cleanup
@@ -238,7 +238,7 @@ do_export() {
                 fi
             fi
         fi
-    done < <(git-cherry "$gitcherry")
+    done < <(git cherry "$gitcherry")
 
     unset GIT_DIR
 
@@ -262,11 +262,11 @@ do_export() {
 
         # stash local changes, rebase and reapply the stash
         if ! no_changes; then
-            git-stash
+            git stash
             git rebase "$gitcherry"
             git stash apply
         else
-            git-rebase "$gitcherry"
+            git rebase "$gitcherry"
         fi
 
     else
@@ -292,7 +292,7 @@ do_import() {
         first=y
     fi
 
-    if ! git-cvsimport -a -i -C "$project_dir" -d "$gitex_cvs_root" "$project"; then
+    if ! git cvsimport -a -i -C "$project_dir" -d "$gitex_cvs_root" "$project"; then
         die "Could not import $project. Aborting"
         rm -rf "$project_dir"
     fi
