@@ -1,7 +1,18 @@
 #!/bin/bash
 
 USAGE='[--export | --import | --update] [--clone] [--verbose] <project>'
-LONG_USAGE='Options:
+LONG_USAGE='
+SHORT VERSION: (By popular demand)
+----------------------------------
+
+Checkout: gitex -c <project>
+Export: gitex -e (in project cloned with gitex)
+Update: gitex -u (in project cloned with gitex)
+
+LONG VERSION:
+-------------
+
+Options:
 -e, --export    Export the project, only works inside a git repository
 -i, --import    Import the project
 -c, --clone     Make a clone/checkout of project into the current directory
