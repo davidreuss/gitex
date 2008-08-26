@@ -1,4 +1,0 @@
-# Configuration defaults for gitex
-gitex_dir=$HOME/.gitex
-gitex_shared_group=coders
-gitex_cvs_root=/home/cvs/repository
