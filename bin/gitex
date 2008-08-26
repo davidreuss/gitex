@@ -43,21 +43,6 @@ If no options is given, gitex will assume you want to import newest
 sources from CVS <project>.
 '
 
-project_encoding="ISO-8859-1"
-run_from=$(pwd)
-last_export_tag=GITEX_LAST_EXPORT
-
-action=import
-verbose=
-clone=
-branch=origin
-project=$(git config gitex.project) # will give nothing back if not in a git repo
-
-cvsbranch=$(git config gitex.exportbranch) # Check if user has set a default branch
-if test -z "$cvsbranch"; then
-    cvsbranch=HEAD
-fi
-
 die() {
     echo >&2 "$@"
     exit 1
@@ -67,9 +52,34 @@ usage() {
     die "Usage: $0 $USAGE"
 }
 
+project_encoding="ISO-8859-1"
+run_from=$(pwd)
+last_export_tag=$(git config gitex.lastexporttag || echo GITEX_LAST_EXPORT)
+
+action=import
+verbose=
+clone=
+branch=origin
+project=$(git config gitex.project) # will give nothing back if not in a git repo
+
+cvsbranch=$(git config gitex.exportbranch || echo HEAD) # Check if user has set a default branch
+
+gitex_cvsroot=$(git config gitex.cvsroot) || die "CVS root not set, please set with git config --global gitex.cvsroot <cvsroot>"
+gitex_group=$(git config gitex.group) || die "gitex group not set, please set with git config --global gitex.group <group>"
+gitex_home=$(git config gitex.home) || die "gitex home not set, please set with git config --global gitex.home <home>"
+
 pre_check() {
-    if ! test -d "$gitex_dir"/git; then
-        . "$HOME/.gitex/setup.sh" "$gitex_dir"
+    if ! test -d "$gitex_home"; then
+        # Try to create it
+        if mkdir -p "$gitex_home" >& /dev/null; then
+            # create git and cvs directories as well
+            mkdir "$gitex_home/cvs" "$gitex_home/git"
+            chgrp -R "$gitex_group" "$gitex_home/cvs" "$gitex_home/git"
+        else
+            echo >&2 "ERROR: Could not create directory: $gitex_home"
+            echo >&2 "Set git config --global gitex.home to a directory where you have permissions."
+            die "Aborting."
+        fi
     fi
 }
 
@@ -122,13 +132,13 @@ do_update() {
 }
 
 do_cleanup() {
-    rm -f "$lock_file" "$gitex_dir/cvs/$project/$cvsbranch/.cvsexportcommit.diff" "$gitex_dir/cvs/$project/$cvsbranch/.msg"
+    rm -f "$lock_file" "$gitex_home/cvs/$project/$cvsbranch/.cvsexportcommit.diff" "$gitex_home/cvs/$project/$cvsbranch/.msg"
     die "Commit: $exportcommit failed applying cleanly. Aborting"
 }
 
 do_set_permissions() {
     find . '!' -perm -20 -exec chmod g+wr {} \;
-    find . '!' -group "$gitex_shared_group" -exec chgrp "$gitex_shared_group" {} \;
+    find . '!' -group "$gitex_group" -exec chgrp "$gitex_group" {} \;
 }
 
 do_export() {
@@ -146,7 +156,7 @@ do_export() {
     require_work_tree
     cd_to_toplevel
 
-    lock_file="$gitex_dir/cvs/.$project-lock"
+    lock_file="$gitex_home/cvs/.$project-lock"
     if [ -f "$lock_file" ]; then
         echo -n ""
         echo "Someone is already pushing '$project'. Aborting."
@@ -161,7 +171,7 @@ do_export() {
         whoami
     ) > "$lock_file"
     chmod 777 "$lock_file"
-    cvs_project="$gitex_dir/cvs/$project"
+    cvs_project="$gitex_home/cvs/$project"
 
     git_directory="$PWD/.git"
     export GIT_DIR="$git_directory"
@@ -170,9 +180,9 @@ do_export() {
         mkdir -p "$cvs_project/$cvsbranch"
         echo "CVS Checkout of $project ($cvsbranch) doesn't exist.. Creating."
         if test "$cvsbranch" = "HEAD"; then
-            cvs -q -d "$gitex_cvs_root" co -d "$cvs_project/$cvsbranch" "$project"
+            cvs -q -d "$gitex_cvsroot" co -d "$cvs_project/$cvsbranch" "$project"
             else
-            if ! cvs -q -d "$gitex_cvs_root" co -r"$cvsbranch" -d "$cvs_project/$cvsbranch" "$project"; then
+            if ! cvs -q -d "$gitex_cvsroot" co -r"$cvsbranch" -d "$cvs_project/$cvsbranch" "$project"; then
                 rm -f "$lock_file"
                 rm -r "$cvs_project/$cvsbranch"
                 die "Aborting."
@@ -213,7 +223,7 @@ do_export() {
     fi
 
     has_updates="no"
-    export_log_file="$gitex_dir/cvs/.$project-$cvsbranch-export"
+    export_log_file="$gitex_home/cvs/.$project-$cvsbranch-export"
     echo "" > "$export_log_file"
     echo ""
     while read line; do
@@ -279,20 +289,16 @@ do_export() {
 do_import() {
 
     CVSUMASK=007
-
-    hooks_dir="$gitex_dir/config/hooks"
-    info_dir="$gitex_dir/config/info"
-    project_dir="$gitex_dir/git/$project"
-
+    project_dir="$gitex_home/git/$project"
     echo "Importing newest changes from '$project' ($cvsbranch)"
 
     first=n
-    if ! test -d "$gitex_dir/git/$project"; then
+    if ! test -d "$gitex_home/git/$project"; then
         echo "This is a first time import, depending on the size of project, this could take a while."
         first=y
     fi
 
-    if ! git cvsimport -a -i -C "$project_dir" -d "$gitex_cvs_root" "$project"; then
+    if ! git cvsimport -a -i -C "$project_dir" -d "$gitex_cvsroot" "$project"; then
         die "Could not import $project. Aborting"
         rm -rf "$project_dir"
     fi
@@ -305,7 +311,7 @@ do_import() {
         git config i18n.commitencoding "ISO-8859-1"
         git config gitex.project "$project" # Setup the project name, for later retrieval
 
-        chgrp -R "$gitex_shared_group" . # make sure others can poke around
+        chgrp -R "$gitex_group" . # make sure others can poke around
     fi
 
     git reset --soft origin # set HEAD to origin
@@ -319,9 +325,9 @@ do_clone() {
     if test -n "$verbose"; then
         echo "Cloning repository $project into $run_from/$project .."
     fi
-    git clone "$gitex_dir"/git/"$project" "$run_from/$project"
+    git clone "$gitex_home"/git/"$project" "$run_from/$project"
     cd "$run_from"/"$project"
-    git remote add cvs "$gitex_dir/git/$project/.git"
+    git remote add cvs "$gitex_home/git/$project/.git"
     git config i18n.commitencoding "ISO-8859-1"
     git config gitex.project "$project" # Setup the project name, for later retrieval
 }
@@ -339,12 +345,6 @@ case "$1" in
     echo "$LONG_USAGE"
     exit
 esac
-
-source "$HOME/.gitex/config/conf" || die "Gitty configuration file not found. Aborting"
-if test -f "$HOME"/.gitexrc; then
-    # Source users own configuration file if found
-    source "$HOME"/.gitexrc
-fi
 
 while case "$#" in 0) break ;; esac
     do
@@ -365,12 +365,8 @@ while case "$#" in 0) break ;; esac
     ;;
     --purge|-p)
     echo "Purging all checkouts, and imports.."
-    rm -rf "$gitex_dir/git"
-    rm -rf "$gitex_dir/cvs"
-
-    cd "$gitex_dir"
-    ./setup.sh
-    echo "Done."
+    rm -rf "$gitex_home/git"
+    rm -rf "$gitex_home/cvs"
     exit 0
     ;;
     --branch|-b)
@@ -391,8 +387,8 @@ case "$#" in
     1)
     project_name="$1"
     # Is this the proper way of finding out what cvs-repos are available?
-    if ! test -d "$gitex_cvs_root/$project_name"; then
-        die "Project $project_name was not found in CVS root ($gitex_cvs_root)"
+    if ! test -d "$gitex_cvsroot/$project_name"; then
+        die "Project $project_name was not found in CVS root ($gitex_cvsroot)"
     fi
     project="$project_name"
     ;;
