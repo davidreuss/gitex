@@ -107,7 +107,6 @@ do_update() {
     cd_to_toplevel
 
     do_import
-    git fetch --quiet
 
     if test "$cvsbranch" = "HEAD"; then
         gitcherry="origin/origin"
@@ -209,8 +208,6 @@ do_export() {
 
     cvs -q upd -dPC # Revert locally modified also
 
-    git fetch --quiet
-
     echo
     echo "The following patches will be exported into CVS"
     echo "-----------------------------------------------"
@@ -276,14 +273,18 @@ do_export() {
 
         cd "$run_from"
 
-        git fetch --quiet # Update with newest refs
-
         # tag latest "export"
         git tag -f "$last_export_tag"
 
-        # sets HEAD to that of the origin branch
-        git reset "$gitcherry"
-
+        # stash local changes, rebase and reapply the stash
+        if ! no_changes; then
+            git stash
+            git rebase "$gitcherry"
+            git stash apply
+        else
+            # It's safe to reset the hard way, un-added files are kept
+            git reset --hard "$gitcherry"
+        fi
     else
         echo "No updates to import."
     fi
@@ -320,10 +321,10 @@ do_import() {
     fi
 
     git reset --soft origin # set HEAD to origin
-
     unset CVSUMASK
 
     cd "$run_from"
+    git fetch --quiet
 }
 
 do_clone() {
