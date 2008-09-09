@@ -206,7 +206,7 @@ do_export() {
         echo
         echo "The following commits will be exported"
         echo "--------------------------------------"
-        echo $to_export
+        echo "$to_export"
     else
         echo "No commits to export."
         exit 0
