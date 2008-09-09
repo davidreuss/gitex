@@ -116,10 +116,11 @@ do_update() {
 
     cherry=$(git cherry -v HEAD "$gitcherry")
     if test -n "$cherry"; then
-        echo "The following patches are not in your HEAD"
-        echo "------------------------------------------"
+        echo
+        echo "The following commits will be pulled into your HEAD"
+        echo "---------------------------------------------------"
         echo "$cherry"
-        else
+    else
         echo "No changes in CVS to import.."
         exit 0
     fi
@@ -166,25 +167,10 @@ do_export() {
     require_work_tree
     cd_to_toplevel
 
-    lock_file="$gitex_home/cvs/.$project-lock"
-    if [ -f "$lock_file" ]; then
-        echo -n ""
-        echo "Someone is already pushing '$project'. Aborting."
-        echo "----------------------------------------"
-        cat "$lock_file"
-        echo "----------------------------------------"
-        exit
-    fi
-
-    (
-        date
-        whoami
-    ) > "$lock_file"
-    chmod 777 "$lock_file"
-    cvs_project="$gitex_home/cvs/$project"
-
     git_directory="$PWD/.git"
     export GIT_DIR="$git_directory"
+
+    cvs_project="$gitex_home/cvs/$project"
 
     if ! test -d "$cvs_project/$cvsbranch"; then
         mkdir -p "$cvs_project/$cvsbranch"
@@ -206,11 +192,7 @@ do_export() {
         echo "Updating to newest.."
     fi
 
-    cvs -q upd -dPC # Revert locally modified also
-
-    echo
-    echo "The following patches will be exported into CVS"
-    echo "-----------------------------------------------"
+    cvs -q upd -dPC &> /dev/null # Revert locally modified also, don't care about output
 
     if test "$cvsbranch" = "HEAD"; then
         gitcherry="origin/origin"
@@ -218,7 +200,34 @@ do_export() {
         gitcherry=origin/"$cvsbranch"
     fi
 
-    git cherry -v "$gitcherry"
+    to_export=$(git cherry -v "$gitcherry");
+
+    if test -n "$to_export"; then
+        echo
+        echo "The following commits will be exported"
+        echo "--------------------------------------"
+        echo $to_export
+    else
+        echo "No commits to export."
+        exit 0
+    fi
+
+    lock_file="$gitex_home/cvs/.$project-lock"
+
+    if [ -f "$lock_file" ]; then
+        echo -n ""
+        echo "Someone is already pushing '$project'. Aborting."
+        echo "----------------------------------------"
+        cat "$lock_file"
+        echo "----------------------------------------"
+        exit
+    fi
+
+    (
+        date
+        whoami
+    ) > "$lock_file"
+    chmod 777 "$lock_file"
 
     sure='N'
     echo
@@ -227,7 +236,8 @@ do_export() {
 
     if ! test "$sure" = "y" -o "$sure" = "Y"; then
         rm -f "$lock_file"
-        die "Export aborted"
+        echo "Export aborted"
+        exit 0
     fi
 
     has_updates="no"
@@ -268,7 +278,7 @@ do_export() {
 
         do_set_permissions
 
-        cvs -q update -dP # Do a update once more, for removing any empty folders due to renames
+        cvs -q update -dP &> /dev/null # Do a update once more, for removing any empty folders due to renames
         do_import # Update our cvs remote with newest commits
 
         cd "$run_from"
@@ -324,7 +334,7 @@ do_import() {
     unset CVSUMASK
 
     cd "$run_from"
-    git fetch --quiet
+    git fetch --quiet &> /dev/null
 }
 
 do_clone() {
