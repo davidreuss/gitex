@@ -79,7 +79,7 @@ gitex_cvsroot=$(git config gitex.cvsroot) || die "CVS root not set, please set w
 gitex_group=$(git config gitex.group) || die "gitex group not set, please set with git config --global gitex.group <group>"
 gitex_home=$(git config gitex.home) || die "gitex home not set, please set with git config --global gitex.home <home>"
 
-pre_check() {
+pre_flight() {
     if ! test -d "$gitex_home"; then
         # Try to create it
         if mkdir -p "$gitex_home" >& /dev/null; then
@@ -417,7 +417,7 @@ case "$#" in
     fi
 esac
 
-pre_check
+pre_flight
 
 case "$action" in
     export)
