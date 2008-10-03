@@ -119,7 +119,10 @@ do_update() {
         echo
         echo "The following commits will be pulled into your HEAD"
         echo "---------------------------------------------------"
-        echo "$cherry"
+        echo "$cherry" | while read plusminus commitid message; do
+            line=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $commitid)
+            echo "${plusminus} $line"
+        done
     else
         echo "No changes in CVS to import.."
         exit 0
