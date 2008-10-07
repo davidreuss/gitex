@@ -209,7 +209,7 @@ do_export() {
         echo
         echo "The following commits will be exported"
         echo "--------------------------------------"
-        echo ""$to_export"" | while read plusminus commitid message; do
+        echo "$to_export" | while read plusminus commitid message; do
             line=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $commitid)
             echo "${plusminus} $line"
         done
