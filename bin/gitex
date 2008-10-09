@@ -84,7 +84,8 @@ pre_flight() {
         # Try to create it
         if mkdir -p "$gitex_home" >& /dev/null; then
             # create git and cvs directories as well
-            mkdir "$gitex_home/cvs" "$gitex_home/git"
+            mkdir "$gitex_home/cvs" || die "Could not create directory '$gitex_home/cvs -- Aborting"
+            mkdir "$gitex_home/git" || die "Could not create directory '$gitex_home/git -- Aborting"
             chgrp -R "$gitex_group" "$gitex_home/cvs" "$gitex_home/git"
         else
             echo >&2 "ERROR: Could not create directory: $gitex_home"
@@ -156,6 +157,14 @@ do_set_permissions() {
 }
 
 do_export() {
+
+    # Trying to fixup a working directory with rebase was essentially stupid
+    # as being able to export commits on a dirty tree really shouldn't be exercised.
+    # It's enforced here, and we just plain abort, if the user has
+    # any local modifications
+    if ! no_changes; then
+        die "You have local changes in your working directory. Aborting."
+    fi
 
     echo "Exporting '$project' into '$cvsbranch'"
     if test -n "$verbose"; then
@@ -292,15 +301,10 @@ do_export() {
         # tag latest "export"
         git tag -f "$last_export_tag"
 
-        # stash local changes, rebase and reapply the stash
-        if ! no_changes; then
-            git stash
-            git rebase "$gitcherry"
-            git stash apply
-        else
-            # It's safe to reset the hard way, un-added files are kept
-            git reset --hard "$gitcherry"
-        fi
+        # It's safe to reset the hard way, sinces we ensured
+        # No local changes was there before export
+        # un-added files are kept
+        git reset --hard "$gitcherry"
     else
         echo "No updates to import."
     fi
