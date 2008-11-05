@@ -86,13 +86,11 @@ pre_flight() {
     if ! test -d "$gitex_home"; then
         # Try to create it
         if mkdir -p "$gitex_home" >& /dev/null; then
+            # make all newly created files owned by same group
+            chmod g+s "$gitex_home" || die "Could not setgid on $gitex_home -- Aborting"
             # create git and cvs directories as well
             mkdir "$gitex_home/cvs" || die "Could not create directory '$gitex_home/cvs -- Aborting"
             mkdir "$gitex_home/git" || die "Could not create directory '$gitex_home/git -- Aborting"
-            chgrp -R "$gitex_group" "$gitex_home/cvs" "$gitex_home/git"
-
-            # make all newly created files owned by same group
-            chmod g+s "$gitex_home/cvs" && chmod g+s "$gitex_home/git" || die "Could not setgid on directories -- Aborting"
         else
             echo >&2 "ERROR: Could not create directory: $gitex_home"
             echo >&2 "Set git config --global gitex.home to a directory where you have permissions."
