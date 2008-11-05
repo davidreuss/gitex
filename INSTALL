@@ -1,0 +1,23 @@
+DEPENDENCIES
+------------
+cvsps, and git
+
+INSTALL
+-------
+1. Copy script bin/gitex to somewhere in your $PATH
+2. Set the following variables in your global git config
+
+# Where gitex will live and all imported/exported repos as well
+git config --global gitex.home "$gitex_home"
+
+# What shared group will your repositories be writable by?
+git config --global gitex.group "$gitex_group"
+
+# The CVS root of your cvs repsoitories - defaults to $CVSROOT
+git config --global gitex.cvsroot "$gitex_cvsroot"
+
+# At every export gitex will tag your commit by this name
+# Makes it easy to find out what was last exported
+git config --global gitex.lastexporttag "$gitex_lastexporttag"
+
+3. PROFIT!
