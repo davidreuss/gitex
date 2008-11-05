@@ -80,6 +80,8 @@ gitex_cvsroot=$(git config gitex.cvsroot) || die "CVS root not set, please set w
 gitex_group=$(git config gitex.group) || die "gitex group not set, please set with git config --global gitex.group <group>"
 gitex_home=$(git config gitex.home) || die "gitex home not set, please set with git config --global gitex.home <home>"
 
+umask 002 # make all what we create group writable. Makes it possible to share git/cvs repos
+
 pre_flight() {
     if ! test -d "$gitex_home"; then
         # Try to create it
@@ -88,6 +90,9 @@ pre_flight() {
             mkdir "$gitex_home/cvs" || die "Could not create directory '$gitex_home/cvs -- Aborting"
             mkdir "$gitex_home/git" || die "Could not create directory '$gitex_home/git -- Aborting"
             chgrp -R "$gitex_group" "$gitex_home/cvs" "$gitex_home/git"
+
+            # make all newly created files owned by same group
+            chmod g+s "$gitex_home/cvs" && chmod g+s "$gitex_home/git" || die "Could not setgid on directories -- Aborting"
         else
             echo >&2 "ERROR: Could not create directory: $gitex_home"
             echo >&2 "Set git config --global gitex.home to a directory where you have permissions."
@@ -150,11 +155,6 @@ do_update() {
 do_cleanup() {
     rm -f "$lock_file" "$gitex_home/cvs/$project/$cvsbranch/.cvsexportcommit.diff" "$gitex_home/cvs/$project/$cvsbranch/.msg"
     die "Commit: $exportcommit failed applying cleanly. Aborting"
-}
-
-do_set_permissions() {
-    find . '!' -perm -20 -exec chmod g+wr {} \;
-    find . '!' -group "$gitex_group" -exec chgrp "$gitex_group" {} \;
 }
 
 do_export() {
@@ -292,8 +292,6 @@ do_export() {
         echo "All OK."
         echo ""
 
-        do_set_permissions
-
         cvs -q update -dP &> /dev/null # Do a update once more, for removing any empty folders due to renames
         do_import # Update our cvs remote with newest commits
 
@@ -315,7 +313,7 @@ do_export() {
 
 do_import() {
 
-    CVSUMASK=007
+    #CVSUMASK=002
     project_dir="$gitex_home/git/$project"
     echo "Importing newest changes from '$project' ($cvsbranch)"
 
