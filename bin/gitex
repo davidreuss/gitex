@@ -389,10 +389,19 @@ while case "$#" in 0) break ;; esac
     clone=t
     ;;
     --purge|-p)
-    echo "Purging all checkouts, and imports.."
-    rm -rf "$gitex_home/git"
-    rm -rf "$gitex_home/cvs"
-    exit 0
+    if test -d "$gitex_home"; then
+        echo -n "Are you sure that you want to purge all projects under '$gitex_home'? (N/y) "
+        read sure
+        if ! test "$sure" = "y" -o "$sure" = "Y"; then
+            die "Purge aborted."
+        fi
+        echo "Purging all checkouts, and imports.."
+        rm -rf "$gitex_home"
+        echo "Done."
+        exit 0
+    else
+        die "No gitex clones found. Aborting"
+    fi
     ;;
     --branch|-b)
     shift;
