@@ -1,6 +1,6 @@
 #!/bin/bash
 
-USAGE='[--export | --import | --update] [--clone] [--verbose] <project>'
+USAGE='[--export | --import | --update] [--clone] [--verbose] [<project>]'
 LONG_USAGE='
 SHORT VERSION: (By popular demand)
 ----------------------------------
@@ -16,7 +16,8 @@ Options:
 -e, --export    Export the project, only works inside a git repository
 -i, --import    Import the project
 -c, --clone     Make a clone/checkout of project into the current directory
--v              Verbose mode
+-v, --verbose   Verbose mode, be noisy
+-p, --purge     Purge all clones created by gitex
 
 gitex is an attempt to create interoperability between git and cvs
 
@@ -33,25 +34,24 @@ where you afterwards can clone from like this:
 
 $ git clone -l $HOME/.gitex/git/<project name> [destination]
 
-You could also pass the -c | --clone flag to gitex, and it will make
+As a shortcut, you could also pass the -c | --clone flag to gitex, and it will make
 a fresh checkout of <project> into your current working directory
 
-To export changes you have committed you would issue
-(from within the top-level your working git repo):
+To export changes you have committed you would issue:
 
-$ gitex --export <project name> -- pushes changes into CVS
+$ gitex --export # pushes changes into CVS, for current gitex cloned project
 
 This will in turn, move your changes into the HEAD of
 the CVS-repository that was exported from. You can assign a specific branch 
-to push into by using --branch <branchname>
+to push into by appending --branch <branchname> when exporting.
 
-If in doubt what changes will be pushed to CVS, you could issue:
-
-$ git fetch -- updates repository with newest remote refs
-$ git cherry origin/origin <local> -- shows what not already is in current CVS
+Gitex will be nice and show you what it will push, so you can still abort,
+if the result is not as you expected.
 
 If no options is given, gitex will assume you want to import newest
 sources from CVS <project>.
+
+Short version of this help is available with `gitex --help | head`
 '
 
 die() {
