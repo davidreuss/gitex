@@ -63,6 +63,7 @@ usage() {
     die "Usage: $0 $USAGE"
 }
 
+user=$(whoami)
 project_encoding="ISO-8859-1"
 run_from=$(pwd)
 last_export_tag=$(git config gitex.lastexporttag || echo GITEX_LAST_EXPORT)
@@ -256,7 +257,7 @@ do_export() {
     fi
 
     has_updates="no"
-    export_log_file="$gitex_home/cvs/.$project-$cvsbranch-export"
+    export_log_file="$gitex_home/cvs/.$project-$cvsbranch-export-$user"
     echo "" > "$export_log_file"
     echo ""
     while read line; do
