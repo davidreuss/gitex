@@ -1,3 +1,11 @@
+DESCRIPTION
+-----------
+gitex is an attempt to create interoperability between git and cvs
+
+Its purpose is importing a project from CVS into a git repository,
+you can clone and work on. After commiting your changes you can export
+those back with the same tool, by running gitex with the export option.
+
 DEPENDENCIES
 ------------
 cvsps, and git
@@ -5,19 +13,26 @@ cvsps, and git
 INSTALL
 -------
 1. Copy script bin/gitex to somewhere in your $PATH
+
 2. Set the following variables in your global git config
 
 # Where gitex will live and all imported/exported repos as well
-git config --global gitex.home "$gitex_home"
+git config --global gitex.home $gitex_home
 
 # What shared group will your repositories be writable by?
-git config --global gitex.group "$gitex_group"
+git config --global gitex.group $gitex_group
 
 # The CVS root of your cvs repsoitories - defaults to $CVSROOT
-git config --global gitex.cvsroot "$gitex_cvsroot"
+git config --global gitex.cvsroot $gitex_cvsroot
 
 # At every export gitex will tag your commit by this name
 # Makes it easy to find out what was last exported
-git config --global gitex.lastexporttag "$gitex_lastexporttag"
+git config --global gitex.lastexporttag $gitex_lastexporttag
+
+# There's a 5th config variable that you can set on a *per project* basis, if you
+# need to export to a different branch than HEAD (in CVS!).
+
+# In the repository where you have other branch than HEAD you normally export to
+git config gitex.exportbranch $gitex_exportbranch
 
 3. PROFIT!

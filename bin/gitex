@@ -23,8 +23,7 @@ gitex is an attempt to create interoperability between git and cvs
 
 Its purpose is importing a project from CVS into a git repository,
 you can clone and work on. After commiting your changes you can export
-those back to the same repository by pushing your changes to a
-designated "publish" branch on the git repo that was imported to.
+those back with the same tool, by running gitex with the export option.
 
 To get started:
 $ gitex --import <project name>
