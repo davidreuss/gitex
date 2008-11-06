@@ -323,6 +323,17 @@ do_export() {
     rm -f "$lock_file"
 }
 
+setup_update_hook() {
+    cat > "$gitex_home/git/$project/.git/hooks/update" <<EOF
+#!/bin/sh
+echo     "-------------------------------------------------------------------------------------------"
+echo >&2 "ERROR: You cannot push to this repository. Use gitex -e for publishing your changes to CVS."
+echo     "-------------------------------------------------------------------------------------------"
+exit 1
+EOF
+    chmod +x "$gitex_home/git/$project/.git/hooks/update"
+}
+
 do_import() {
 
     #CVSUMASK=002
@@ -347,8 +358,7 @@ do_import() {
         echo "Setting commit encoding to ISO-8859-1" # TODO: Make configurable
         git config i18n.commitencoding "ISO-8859-1"
         git config gitex.project "$project" # Setup the project name, for later retrieval
-
-        chgrp -R "$gitex_group" . # make sure others can poke around
+        setup_update_hook
     fi
 
     git reset --soft origin # set HEAD to origin
