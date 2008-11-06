@@ -172,6 +172,20 @@ do_export() {
 
     do_import
 
+    # check for newer commits in the "origin", and refuse it users repo is not up-to-date
+
+    if test "$cvsbranch" = "HEAD"; then
+        gitcherry="origin/origin"
+        else
+        gitcherry=origin/"$cvsbranch"
+    fi
+
+    cherry=$(git cherry -v HEAD "$gitcherry")
+    if test -n "$cherry"; then
+        echo "Your repostory is not up-to-date. Please update before exporting your changes."
+        exit 0
+    fi
+
     # check if we're in a git repository, assume the user has git in PATH
     SUBDIRECTORY_OK=Yes
     . "$(git --exec-path)/git-sh-setup"
