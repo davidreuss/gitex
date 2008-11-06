@@ -288,6 +288,10 @@ do_export() {
                 if ! git cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
                     echo " ... FAILED"
                     echo ""
+                    echo "Output from CVS:"
+                    echo "----------------"
+                    cat "$export_log_file"
+                    echo "----------------"
                     do_cleanup
                 else
                     echo " ... OK"
