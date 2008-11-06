@@ -374,7 +374,6 @@ do_clone() {
     fi
     git clone "$gitex_home"/git/"$project" "$run_from/$project"
     cd "$run_from"/"$project"
-    git remote add cvs "$gitex_home/git/$project/.git"
     git config i18n.commitencoding "ISO-8859-1"
     git config gitex.project "$project" # Setup the project name, for later retrieval
 }
