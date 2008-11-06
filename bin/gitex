@@ -1,5 +1,7 @@
 #!/bin/bash
 
+VERSION='0.5.0'
+
 USAGE='[--export | --import | --update] [--clone] [--verbose] [<project>]'
 LONG_USAGE='
 SHORT VERSION: (By popular demand)
@@ -393,7 +395,12 @@ fi
 case "$1" in
     -h|--h|--he|--hel|--help)
     echo "$LONG_USAGE"
-    exit
+    exit 0
+    ;;
+    --version)
+        echo "gitex version $VERSION"
+        exit 0
+    ;;
 esac
 
 while case "$#" in 0) break ;; esac
