@@ -85,6 +85,7 @@ pre_flight() {
     if ! test -d "$gitex_home"; then
         # Try to create it
         if mkdir -p "$gitex_home" >& /dev/null; then
+            chgrp "$gitex_group" "$gitex_home"
             # make all newly created files owned by same group
             chmod g+s "$gitex_home" || die "Could not setgid on $gitex_home -- Aborting"
             # create git and cvs directories as well
