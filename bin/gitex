@@ -203,7 +203,7 @@ do_export() {
         mkdir -p "$cvs_project/$cvsbranch"
         echo "CVS Checkout of $project ($cvsbranch) doesn't exist.. Creating."
         if test "$cvsbranch" = "HEAD"; then
-            cvs -q -d "$gitex_cvsroot" co -d "$cvs_project/$cvsbranch" "$project"
+            cvs -q -d "$gitex_cvsroot" co -d "$cvs_project/$cvsbranch" "$project" > /dev/null # suppress noise
             else
             if ! cvs -q -d "$gitex_cvsroot" co -r"$cvsbranch" -d "$cvs_project/$cvsbranch" "$project"; then
                 rm -f "$lock_file"
