@@ -2,7 +2,7 @@
 
 VERSION='0.5.0'
 
-USAGE='[--export | --import | --update] [--clone] [--verbose] [<project>]'
+USAGE='[--export | --import | --update] [--clone] [--verbose] [--stat] [<project>]'
 LONG_USAGE='
 SHORT VERSION: (By popular demand)
 ----------------------------------
@@ -70,6 +70,7 @@ run_from=$(pwd)
 last_export_tag=$(git config gitex.lastexporttag || echo GITEX_LAST_EXPORT)
 
 action=import
+stat=
 verbose=
 clone=
 branch=origin
@@ -127,7 +128,7 @@ do_update() {
         echo "The following commits will be pulled into your HEAD"
         echo "---------------------------------------------------"
         echo "$cherry" | while read plusminus commitid message; do
-            line=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $commitid)
+            line=$(git log -1 --pretty=oneline --color --abbrev-commit $stat $commitid)
             echo "${plusminus} $line"
         done
     else
@@ -234,7 +235,7 @@ do_export() {
         echo "The following commits will be exported"
         echo "--------------------------------------"
         echo "$to_export" | while read plusminus commitid message; do
-            line=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $commitid)
+            line=$(git log -1 --pretty=oneline --color --abbrev-commit $stat $commitid)
             echo "${plusminus} $line"
         done
     else
@@ -285,7 +286,7 @@ do_export() {
                 fi
             else
                 # Suppress the output of git cvsexportcommit as it can be rather verbose
-                commitline=$(git show --quiet --name-only --pretty=oneline --color --abbrev-commit $exportcommit)
+                commitline=$(git log -1 --pretty=oneline --color --abbrev-commit $stat $exportcommit)
                 echo -n "Exporting: $commitline"
                 if ! git cvsexportcommit -c -p "$exportcommit" >> "$export_log_file" 2>&1; then
                     echo " ... FAILED"
@@ -408,6 +409,9 @@ while case "$#" in 0) break ;; esac
     case "$1" in
     -v|--verbose)
     verbose=t
+    ;;
+    -s|--stat)
+    stat='--stat'
     ;;
     --export|-e)
     action=export
