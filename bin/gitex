@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION='0.5.1'
+VERSION='0.5.2'
 
 USAGE='[--export | --import | --update] [--clone] [--verbose] [--stat] [<project>]'
 LONG_USAGE='
