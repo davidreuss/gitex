@@ -258,7 +258,6 @@ do_export() {
         date
         whoami
     ) > "$lock_file"
-    chmod 777 "$lock_file"
 
     sure='N'
     echo
