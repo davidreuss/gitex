@@ -49,7 +49,7 @@ to push into by appending --branch <branchname> when exporting.
 Gitex will be nice and show you what it will push, so you can still abort,
 if the result is not as you expected.
 
-If no options is given, gitex will assume you want to import newest
+If no options is given, gitex will assume you want to import latest
 sources from CVS <project>.
 
 Short version of this help is available with `gitex --help | head`
@@ -217,7 +217,7 @@ do_export() {
     cd "$cvs_project/$cvsbranch"
 
     if test -n "$verbose"; then
-        echo "Updating to newest.."
+        echo "Updating to latest.."
     fi
 
     cvs -q upd -dPC &> /dev/null # Revert locally modified also, don't care about output
@@ -311,7 +311,7 @@ do_export() {
         echo ""
 
         cvs -q update -dP &> /dev/null # Do a update once more, for removing any empty folders due to renames
-        do_import # Update our cvs remote with newest commits
+        do_import # Update our cvs remote with latest commits
 
         cd "$run_from"
 
@@ -344,7 +344,7 @@ do_import() {
 
     #CVSUMASK=002
     project_dir="$gitex_home/git/$project"
-    echo "Importing newest changes from '$project' ($cvsbranch)"
+    echo "Importing latest changes from '$project' ($cvsbranch)"
 
     first=n
     if ! test -d "$gitex_home/git/$project"; then
